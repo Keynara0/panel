@@ -635,7 +635,7 @@ client.on('interactionCreate', async interaction => {
         .setCustomId('key_input')
         .setLabel('Enter script key below:')
         .setStyle(TextInputStyle.Short)
-        .setPlaceholder('JHF-XXXX-XXXX-XXXX or JinHub-XXXXXX-XXXXXX-XXXXXX')
+        .setPlaceholder('XXXX-XXXX-XXXX-XXXX')
         .setRequired(true)
         .setMinLength(16)
         .setMaxLength(30);
