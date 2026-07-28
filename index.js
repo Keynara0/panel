@@ -477,6 +477,9 @@ client.on('interactionCreate', async interaction => {
           keyData.keyObj.lastReset = new Date().toISOString();
           keyData.keyObj.resetCount = (keyData.keyObj.resetCount || 0) + 1;
           
+          console.log(`[Reset] Resetting FREE key HWID in KV: ${keyData.recordKey}`);
+          console.log(`[Reset] Old HWID: ${keyData.keyObj.hwid}`);
+          
           // Update the record in KV
           const updateResponse = await fetch(`${CONFIG.apiUrl}/api/kv-editor`, {
             method: 'POST',
@@ -494,6 +497,8 @@ client.on('interactionCreate', async interaction => {
           
           const updateData = await updateResponse.json();
           
+          console.log(`[Reset] FREE key update result:`, updateData);
+          
           if (updateData.success) {
             resetResult = {
               success: true,
@@ -504,11 +509,15 @@ client.on('interactionCreate', async interaction => {
               tierName: 'Free',
               provider: keyData.provider
             };
+            
+            console.log(`[Reset] ✅ FREE key HWID reset successful: ${key}`);
           } else {
             resetResult = {
               success: false,
               error: updateData.error || 'Failed to update KV'
             };
+            
+            console.error(`[Reset] ❌ FREE key HWID reset failed:`, updateData.error);
           }
         } catch (error) {
           console.error('[Reset] Error resetting free key HWID:', error);
@@ -519,7 +528,15 @@ client.on('interactionCreate', async interaction => {
         }
       } else {
         // Premium key - use normal reset API
+        console.log(`[Reset] Resetting PREMIUM key HWID via API: ${key}`);
         resetResult = await resetHWIDAPI(key);
+        console.log(`[Reset] PREMIUM key reset result:`, resetResult);
+        
+        if (resetResult.success) {
+          console.log(`[Reset] ✅ PREMIUM key HWID reset successful: ${key}`);
+        } else {
+          console.error(`[Reset] ❌ PREMIUM key HWID reset failed:`, resetResult.error);
+        }
       }
       
       if (!resetResult.success) {
