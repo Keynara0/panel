@@ -87,8 +87,8 @@ function saveCooldowns() {
 // Check if user is on cooldown
 function isOnCooldown(userId, key) {
   // Admin bypass - check if user has admin role or is owner
-  const ADMIN_USER_IDS = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim());
-  if (ADMIN_USER_IDS.includes(userId)) {
+  const ADMIN_USER_IDS = (process.env.ADMIN_USER_IDS || '').split(',').filter(id => id.trim()).map(id => id.trim());
+  if (ADMIN_USER_IDS.length > 0 && ADMIN_USER_IDS.includes(userId)) {
     console.log(`[Cooldown] Admin bypass for user ${userId}`);
     return { onCooldown: false };
   }
@@ -479,13 +479,30 @@ client.on('interactionCreate', async interaction => {
       if (isFreeKey && keyData) {
         // Reset free key HWID by updating the key object
         try {
-          keyData.keyObj.hwid = null;
-          keyData.keyObj.boundAt = null;
-          keyData.keyObj.lastReset = new Date().toISOString();
-          keyData.keyObj.resetCount = (keyData.keyObj.resetCount || 0) + 1;
-          
+          // Log old HWID BEFORE clearing it
+          const oldHwid = keyData.keyObj.hwid;
           console.log(`[Reset] Resetting FREE key HWID in KV: ${keyData.recordKey}`);
-          console.log(`[Reset] Old HWID: ${keyData.keyObj.hwid}`);
+          console.log(`[Reset] Old HWID: ${oldHwid}`);
+          console.log(`[Reset] Old boundAt: ${keyData.keyObj.boundAt}`);
+          
+          // Find the key in the record array and update it directly
+          const keyIndex = keyData.record.keys.findIndex(k => k.key === key);
+          
+          if (keyIndex === -1) {
+            console.error('[Reset] Key not found in record.keys array!');
+            throw new Error('Key not found in record');
+          }
+          
+          console.log(`[Reset] Found key at index ${keyIndex}`);
+          
+          // Update directly in the record array
+          keyData.record.keys[keyIndex].hwid = null;
+          keyData.record.keys[keyIndex].boundAt = null;
+          keyData.record.keys[keyIndex].lastReset = new Date().toISOString();
+          keyData.record.keys[keyIndex].resetCount = (keyData.record.keys[keyIndex].resetCount || 0) + 1;
+          
+          console.log(`[Reset] New HWID value: ${keyData.record.keys[keyIndex].hwid}`);
+          console.log(`[Reset] Reset count: ${keyData.record.keys[keyIndex].resetCount}`);
           
           // Update the record in KV
           const updateResponse = await fetch(`${CONFIG.apiUrl}/api/kv-editor`, {
@@ -497,7 +514,7 @@ client.on('interactionCreate', async interaction => {
             body: JSON.stringify({
               action: 'set',
               key: keyData.recordKey,
-              value: JSON.stringify(keyData.record),
+              value: keyData.record, // Send object directly, kv-editor will stringify it
               token: CONFIG.adminToken
             })
           });
