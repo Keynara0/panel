@@ -152,7 +152,10 @@ async function resetHWIDAPI(key) {
   try {
     const response = await fetch(`${CONFIG.apiUrl}/api/premium/reset-hwid`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'User-Agent': 'JinHub-Discord-Bot/1.0'
+      },
       body: JSON.stringify({
         key: key,
         adminToken: CONFIG.adminToken
@@ -531,7 +534,7 @@ client.on('interactionCreate', async interaction => {
             const keymapKey = `keymap:${keyData.provider}:${key}`;
             
             // Delete keymap
-            await fetch(`${CONFIG.apiUrl}/api/kv-editor`, {
+            const deleteResponse = await fetch(`${CONFIG.apiUrl}/api/kv-editor`, {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
@@ -544,14 +547,20 @@ client.on('interactionCreate', async interaction => {
               })
             });
             
-            console.log(`[Reset] Deleted keymap: ${keymapKey}`);
+            const deleteResult = await deleteResponse.json();
+            console.log(`[Reset] Deleted keymap: ${keymapKey}`, deleteResult);
+            
+            if (!deleteResult.success) {
+              console.error('[Reset] ❌ Failed to delete keymap:', deleteResult.error);
+              throw new Error(`Failed to delete keymap: ${deleteResult.error}`);
+            }
             
             // Recreate keymap with TTL based on key expiration
             const now = Date.now();
             const expiresAt = keyData.record.keys[keyIndex].expiresAt;
             const ttlSeconds = expiresAt > now ? Math.ceil((expiresAt - now) / 1000 * 1.5) : 3600;
             
-            await fetch(`${CONFIG.apiUrl}/api/kv-editor`, {
+            const recreateResponse = await fetch(`${CONFIG.apiUrl}/api/kv-editor`, {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',
@@ -561,11 +570,18 @@ client.on('interactionCreate', async interaction => {
                 action: 'set',
                 key: keymapKey,
                 value: keyData.jhId,
+                ttl: ttlSeconds, // Add TTL support
                 token: CONFIG.adminToken
               })
             });
             
-            console.log(`[Reset] Recreated keymap with TTL ${ttlSeconds}s`);
+            const recreateResult = await recreateResponse.json();
+            console.log(`[Reset] Recreated keymap with TTL ${ttlSeconds}s`, recreateResult);
+            
+            if (!recreateResult.success) {
+              console.error('[Reset] ❌ Failed to recreate keymap:', recreateResult.error);
+              throw new Error(`Failed to recreate keymap: ${recreateResult.error}`);
+            }
             
             resetResult = {
               success: true,
