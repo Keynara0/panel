@@ -86,6 +86,13 @@ function saveCooldowns() {
 
 // Check if user is on cooldown
 function isOnCooldown(userId, key) {
+  // Admin bypass - check if user has admin role or is owner
+  const ADMIN_USER_IDS = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim());
+  if (ADMIN_USER_IDS.includes(userId)) {
+    console.log(`[Cooldown] Admin bypass for user ${userId}`);
+    return { onCooldown: false };
+  }
+  
   const cooldownKey = `${userId}:${key}`;
   
   if (!cooldowns[cooldownKey]) {
