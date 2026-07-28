@@ -524,11 +524,54 @@ client.on('interactionCreate', async interaction => {
           console.log(`[Reset] FREE key update result:`, updateData);
           
           if (updateData.success) {
+            // IMPORTANT: Invalidate keymap cache by deleting and recreating it
+            // This forces Cloudflare to fetch fresh keyrec data
+            console.log(`[Reset] Invalidating keymap cache for ${key}...`);
+            
+            const keymapKey = `keymap:${keyData.provider}:${key}`;
+            
+            // Delete keymap
+            await fetch(`${CONFIG.apiUrl}/api/kv-editor`, {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${CONFIG.adminToken}`
+              },
+              body: JSON.stringify({
+                action: 'delete',
+                key: keymapKey,
+                token: CONFIG.adminToken
+              })
+            });
+            
+            console.log(`[Reset] Deleted keymap: ${keymapKey}`);
+            
+            // Recreate keymap with TTL based on key expiration
+            const now = Date.now();
+            const expiresAt = keyData.record.keys[keyIndex].expiresAt;
+            const ttlSeconds = expiresAt > now ? Math.ceil((expiresAt - now) / 1000 * 1.5) : 3600;
+            
+            await fetch(`${CONFIG.apiUrl}/api/kv-editor`, {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${CONFIG.adminToken}`
+              },
+              body: JSON.stringify({
+                action: 'set',
+                key: keymapKey,
+                value: keyData.jhId,
+                token: CONFIG.adminToken
+              })
+            });
+            
+            console.log(`[Reset] Recreated keymap with TTL ${ttlSeconds}s`);
+            
             resetResult = {
               success: true,
               message: 'HWID reset successfully',
               key: key,
-              resetCount: keyData.keyObj.resetCount,
+              resetCount: keyData.record.keys[keyIndex].resetCount,
               tier: 'free',
               tierName: 'Free',
               provider: keyData.provider
