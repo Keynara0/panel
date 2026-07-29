@@ -173,7 +173,11 @@ async function resetHWIDAPI(key) {
 // Verify key exists via API (for HWID reset - allows expired keys)
 async function verifyKeyAPI(key) {
   try {
-    const response = await fetch(`${CONFIG.apiUrl}/api/premium/verify?key=${encodeURIComponent(key)}`);
+    const response = await fetch(`${CONFIG.apiUrl}/api/premium/verify?key=${encodeURIComponent(key)}`, {
+      headers: {
+        'User-Agent': 'JinHub-Discord-Bot/1.0'
+      }
+    });
     const data = await response.json();
     
     // For HWID reset, we allow expired keys
